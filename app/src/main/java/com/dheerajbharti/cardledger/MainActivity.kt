@@ -29,6 +29,7 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.RevokeAccessRequest
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
+import com.google.android.material.tabs.TabLayout
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -49,6 +50,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingFullRescan = false
     private var busy = false
     private var lastObservedSync = 0L
+    private var privacyMode = false
+
     private val statusHandler = Handler(Looper.getMainLooper())
     private val statusRefresh = object : Runnable {
         override fun run() {
@@ -125,7 +128,10 @@ class MainActivity : AppCompatActivity() {
 
         db = LedgerDbHelper(this)
         repository = LedgerRepository(this)
+        privacyMode = getUiPrefs().getBoolean(KEY_PRIVACY_MODE, false)
+
         setupUi()
+        updatePrivacyUi()
         restoreStatus()
         reloadStatement()
         startAutomaticSyncIfConfigured()
@@ -175,6 +181,17 @@ class MainActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
 
+        binding.mainTabs.removeAllTabs()
+        binding.mainTabs.addTab(binding.mainTabs.newTab().setText("Ledger"))
+        binding.mainTabs.addTab(binding.mainTabs.newTab().setText("Connection"))
+        binding.mainTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) = updateTabContent(tab.position)
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+        updateTabContent(0)
+
+        binding.privacyButton.setOnClickListener { togglePrivacyMode() }
         binding.connectButton.setOnClickListener { authorizeAndSync(fullRescan = true) }
         binding.syncButton.setOnClickListener {
             val prefs = getSharedPreferences(EmailSyncWorker.PREFS, Context.MODE_PRIVATE)
@@ -193,6 +210,34 @@ class MainActivity : AppCompatActivity() {
         binding.clearButton.setOnClickListener { confirmClearData() }
         binding.disconnectButton.setOnClickListener { confirmDisconnect() }
     }
+
+    private fun updateTabContent(position: Int) {
+        val showLedger = position == 0
+        binding.ledgerTabContent.visibility = if (showLedger) View.VISIBLE else View.GONE
+        binding.connectionTabContent.visibility = if (showLedger) View.GONE else View.VISIBLE
+    }
+
+    private fun togglePrivacyMode() {
+        privacyMode = !privacyMode
+        getUiPrefs().edit().putBoolean(KEY_PRIVACY_MODE, privacyMode).apply()
+        updatePrivacyUi()
+        restoreStatus()
+        reloadStatement()
+    }
+
+    private fun updatePrivacyUi() {
+        binding.privacyButton.setImageResource(
+            if (privacyMode) R.drawable.ic_visibility_off else R.drawable.ic_visibility
+        )
+        binding.privacyButton.contentDescription = if (privacyMode) {
+            "Show amounts and digits"
+        } else {
+            "Hide amounts and digits"
+        }
+        transactionAdapter.setPrivacyMode(privacyMode)
+    }
+
+    private fun getUiPrefs() = getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE)
 
     private fun startAutomaticSyncIfConfigured() {
         val prefs = getSharedPreferences(EmailSyncWorker.PREFS, Context.MODE_PRIVATE)
@@ -220,18 +265,31 @@ class MainActivity : AppCompatActivity() {
             binding.accountStatus.text = "Gmail is not connected"
             binding.connectButton.text = getString(R.string.connect_gmail)
         }
-        binding.syncButton.isEnabled = initialDone
-        binding.fullRescanButton.isEnabled = initialDone
-        binding.autoSyncStatus.text = if (initialDone) {
-            "AUTO-SYNC ON  •  ABOUT EVERY ${EmailSyncWorker.AUTO_SYNC_HOURS} HOURS"
-        } else {
-            "AUTO-SYNC STARTS AFTER YOUR FIRST SCAN"
-        }
-        binding.syncStatus.text = when {
-            lastSync > 0L && !autoStatus.isNullOrBlank() ->
-                "Last sync: ${formatInstant(lastSync)}\n$autoStatus"
-            lastSync > 0L -> "Last sync: ${formatInstant(lastSync)}"
-            else -> "Connect your Google account to scan ICICI transaction alerts."
+
+        binding.syncButton.isEnabled = !busy
+        binding.fullRescanButton.isEnabled = !busy
+        binding.connectButton.isEnabled = !busy
+        binding.clearButton.isEnabled = !busy
+        binding.disconnectButton.isEnabled = !busy
+
+        binding.autoSyncStatus.text = privacyAware(
+            if (initialDone) {
+                "AUTO-SYNC ON  •  ABOUT EVERY ${EmailSyncWorker.AUTO_SYNC_HOURS} HOURS"
+            } else {
+                "AUTO-SYNC STARTS AFTER YOUR FIRST SCAN"
+            }
+        )
+        binding.syncStatus.text = privacyAware(
+            when {
+                lastSync > 0L && !autoStatus.isNullOrBlank() ->
+                    "Last sync: ${formatInstant(lastSync)}\n$autoStatus"
+                lastSync > 0L -> "Last sync: ${formatInstant(lastSync)}"
+                else -> "Connect your Google account to scan ICICI transaction alerts."
+            }
+        )
+
+        if (!busy && binding.mainSyncStatus.text.isNullOrBlank()) {
+            binding.mainSyncStatus.visibility = View.GONE
         }
     }
 
@@ -276,7 +334,9 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = repository.sync(accessToken, fullRescan) { progress ->
                     runOnUiThread {
-                        binding.syncStatus.text = "Scanning email ${progress.processed} of ${progress.total}…"
+                        val progressText = "Scanning email ${progress.processed} of ${progress.total}…"
+                        binding.syncStatus.text = privacyAware(progressText)
+                        showMainSyncStatus(progressText)
                     }
                 }
                 val prefs = getSharedPreferences(EmailSyncWorker.PREFS, Context.MODE_PRIVATE)
@@ -321,31 +381,36 @@ class MainActivity : AppCompatActivity() {
                 .fold(BigDecimal.ZERO) { total, value -> total.add(value) }
             val coveredCount = transactions.count { it.inrAmount != null }
             val breakdown = buildBreakdown(period, transactions)
+            val countText = "${transactions.size} ${if (transactions.size == 1) "transaction" else "transactions"}"
+            val totalText = if (transactions.isEmpty() || coveredCount == 0) {
+                "—"
+            } else {
+                TransactionAdapter.formatInr(estimatedTotal.toPlainString())
+            }
+            val coverageText = when {
+                transactions.isEmpty() -> "No transactions in this period"
+                coveredCount == transactions.size -> "All ${transactions.size} transactions included in the INR total"
+                else -> "$coveredCount of ${transactions.size} transactions included in the INR total"
+            }
+            val originalTotalsText = if (originalTotals.isEmpty()) {
+                "—"
+            } else {
+                originalTotals.entries.joinToString("  •  ") {
+                    TransactionAdapter.formatMoney(it.key, it.value.toPlainString())
+                }
+            }
 
             runOnUiThread {
                 currentTransactions = transactions
+                transactionAdapter.setPrivacyMode(privacyMode)
                 transactionAdapter.submitList(transactions)
                 binding.emptyView.visibility = if (transactions.isEmpty()) View.VISIBLE else View.GONE
                 binding.transactionList.visibility = if (transactions.isEmpty()) View.GONE else View.VISIBLE
-                binding.countValue.text = "${transactions.size} ${if (transactions.size == 1) "transaction" else "transactions"}"
-                binding.totalValue.text = if (transactions.isEmpty() || coveredCount == 0) {
-                    "—"
-                } else {
-                    TransactionAdapter.formatInr(estimatedTotal.toPlainString())
-                }
-                binding.coverageValue.text = when {
-                    transactions.isEmpty() -> "No transactions in this period"
-                    coveredCount == transactions.size -> "All ${transactions.size} transactions included in the INR total"
-                    else -> "$coveredCount of ${transactions.size} transactions included in the INR total"
-                }
-                binding.originalTotalsValue.text = if (originalTotals.isEmpty()) {
-                    "—"
-                } else {
-                    originalTotals.entries.joinToString("  •  ") {
-                        TransactionAdapter.formatMoney(it.key, it.value.toPlainString())
-                    }
-                }
-                binding.breakdownValue.text = breakdown.ifBlank { "—" }
+                binding.countValue.text = privacyAware(countText)
+                binding.totalValue.text = privacyAware(totalText)
+                binding.coverageValue.text = privacyAware(coverageText)
+                binding.originalTotalsValue.text = privacyAware(originalTotalsText)
+                binding.breakdownValue.text = privacyAware(breakdown.ifBlank { "—" })
             }
         }
     }
@@ -410,13 +475,17 @@ class MainActivity : AppCompatActivity() {
     private fun setBusy(isBusy: Boolean, status: String) {
         busy = isBusy
         binding.connectButton.isEnabled = !isBusy
-        val prefs = getSharedPreferences(EmailSyncWorker.PREFS, Context.MODE_PRIVATE)
-        val initialDone = prefs.getBoolean(EmailSyncWorker.KEY_INITIAL_SYNC_DONE, false)
-        binding.syncButton.isEnabled = !isBusy && initialDone
-        binding.fullRescanButton.isEnabled = !isBusy && initialDone
+        binding.syncButton.isEnabled = !isBusy
+        binding.fullRescanButton.isEnabled = !isBusy
         binding.clearButton.isEnabled = !isBusy
         binding.disconnectButton.isEnabled = !isBusy
-        binding.syncStatus.text = status
+        binding.syncStatus.text = privacyAware(status)
+        showMainSyncStatus(status)
+    }
+
+    private fun showMainSyncStatus(message: String) {
+        binding.mainSyncStatus.visibility = View.VISIBLE
+        binding.mainSyncStatus.text = privacyAware(message)
     }
 
     private fun confirmClearData() {
@@ -435,10 +504,10 @@ class MainActivity : AppCompatActivity() {
                         .apply()
                     EmailSyncWorker.cancel(this)
                     runOnUiThread {
-                        binding.syncButton.isEnabled = false
-                        binding.fullRescanButton.isEnabled = false
                         binding.syncStatus.text = "Local ledger cleared. Run a full scan to rebuild it."
-                        binding.autoSyncStatus.text = "AUTO-SYNC STARTS AFTER YOUR FIRST SCAN"
+                        binding.autoSyncStatus.text = privacyAware("AUTO-SYNC STARTS AFTER YOUR FIRST SCAN")
+                        binding.mainSyncStatus.visibility = View.GONE
+                        restoreStatus()
                         reloadStatement()
                     }
                 }
@@ -488,7 +557,8 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 binding.accountStatus.text = "Gmail is not connected"
                 binding.connectButton.text = getString(R.string.connect_gmail)
-                binding.autoSyncStatus.text = "AUTO-SYNC STARTS AFTER YOUR FIRST SCAN"
+                binding.autoSyncStatus.text = privacyAware("AUTO-SYNC STARTS AFTER YOUR FIRST SCAN")
+                binding.mainSyncStatus.visibility = View.GONE
                 setBusy(false, "Gmail disconnected and local ledger erased.")
                 reloadStatement()
             }
@@ -511,6 +581,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun csvEscape(value: String): String {
         return "\"${value.replace("\"", "\"\"")}\""
+    }
+
+    private fun privacyAware(text: String): String {
+        if (!privacyMode) return text
+        return text.replace(Regex("\\d"), "•")
     }
 
     private fun toast(message: String) {
@@ -573,5 +648,10 @@ class MainActivity : AppCompatActivity() {
             return startDate.atStartOfDay(zone).toInstant().toEpochMilli() to
                 endDate.atStartOfDay(zone).toInstant().toEpochMilli()
         }
+    }
+
+    companion object {
+        private const val UI_PREFS = "card_ledger_ui"
+        private const val KEY_PRIVACY_MODE = "privacy_mode"
     }
 }

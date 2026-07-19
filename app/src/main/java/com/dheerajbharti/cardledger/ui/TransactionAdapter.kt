@@ -18,10 +18,16 @@ import java.util.Locale
 
 class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>() {
     private val items = mutableListOf<CardTransaction>()
+    private var privacyMode = false
 
     fun submitList(newItems: List<CardTransaction>) {
         items.clear()
         items.addAll(newItems)
+        notifyDataSetChanged()
+    }
+
+    fun setPrivacyMode(enabled: Boolean) {
+        privacyMode = enabled
         notifyDataSetChanged()
     }
 
@@ -35,7 +41,7 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position])
+        holder.bind(items[position], privacyMode)
     }
 
     override fun getItemCount(): Int = items.size
@@ -43,22 +49,34 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
     class ViewHolder(
         private val binding: ItemTransactionBinding
     ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(item: CardTransaction) {
+        fun bind(item: CardTransaction, privacyMode: Boolean) {
             binding.merchant.text = item.merchant
-            binding.amount.text = if (item.currency.equals("INR", ignoreCase = true)) {
-                formatInr(item.amount)
-            } else {
-                formatMoney(item.currency, item.amount)
-            }
-            binding.dateAndCard.text = "${formatDate(item.transactionEpochMillis)}  •  Card XX${item.cardLast4}"
-            binding.limit.text = item.availableLimitInr?.let {
-                "Available limit after alert: ${formatInr(it)}"
-            }.orEmpty()
+            binding.amount.text = privacyAware(
+                if (item.currency.equals("INR", ignoreCase = true)) {
+                    formatInr(item.amount)
+                } else {
+                    formatMoney(item.currency, item.amount)
+                },
+                privacyMode
+            )
+            binding.dateAndCard.text = privacyAware(
+                "${formatDate(item.transactionEpochMillis)}  •  Card XX${item.cardLast4}",
+                privacyMode
+            )
+            binding.limit.text = privacyAware(
+                item.availableLimitInr?.let {
+                    "Available limit after alert: ${formatInr(it)}"
+                }.orEmpty(),
+                privacyMode
+            )
 
             when (item.inrAmountSource) {
                 InrAmountSource.AVAILABLE_LIMIT_DIFFERENCE -> {
                     binding.inrEquivalent.visibility = View.VISIBLE
-                    binding.inrEquivalent.text = "Estimated INR debit: ${formatInr(item.inrAmount!!)}"
+                    binding.inrEquivalent.text = privacyAware(
+                        "Estimated INR debit: ${formatInr(item.inrAmount!!)}",
+                        privacyMode
+                    )
                 }
                 InrAmountSource.UNAVAILABLE -> {
                     if (item.currency.equals("INR", ignoreCase = true)) {
@@ -101,6 +119,11 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
                 }
             }
             return DecimalFormat(pattern, symbols).format(BigDecimal(amount))
+        }
+
+        private fun privacyAware(text: String, enabled: Boolean): String {
+            if (!enabled) return text
+            return text.replace(Regex("\\d"), "•")
         }
     }
 }

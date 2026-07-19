@@ -1,16 +1,9 @@
 package com.dheerajbharti.cardledger.data
 
 import java.math.BigDecimal
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object IciciTransactionParser {
-    private val bankZone: ZoneId = ZoneId.of("Asia/Kolkata")
-    private val transactionDateFormat =
-        DateTimeFormatter.ofPattern("MMM d, uuuu HH:mm:ss", Locale.ENGLISH)
-
     private val transactionPattern = Regex(
         pattern = """Credit Card\s+XX(\d{4})\s+has been used for a transaction of\s+([A-Z]{3})\s+([\d,]+(?:\.\d+)?)\s+on\s+([A-Za-z]{3}\s+\d{1,2},\s+\d{4})\s+at\s+(\d{1,2}:\d{2}:\d{2})\.\s*Info:\s*(.+?)(?=\.\s*The Available Credit Limit|\s+The Available Credit Limit|$)""",
         options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
@@ -45,14 +38,11 @@ object IciciTransactionParser {
             return null
         }
 
-        val transactionEpoch = try {
-            LocalDateTime.parse("$dateRaw $timeRaw", transactionDateFormat)
-                .atZone(bankZone)
-                .toInstant()
-                .toEpochMilli()
-        } catch (_: Exception) {
-            return null
-        }
+        val transactionEpoch = TransactionTimeResolver.resolve(
+            dateRaw = dateRaw,
+            timeRaw = timeRaw,
+            emailReceivedEpochMillis = emailReceivedEpochMillis
+        ) ?: return null
 
         val merchant = merchantRaw
             .replace(Regex("\\s+"), " ")
@@ -75,7 +65,7 @@ object IciciTransactionParser {
             amount = amount,
             merchant = merchant,
             transactionEpochMillis = transactionEpoch,
-            transactionLocalText = "$dateRaw $timeRaw IST",
+            transactionLocalText = TransactionTimeResolver.format(transactionEpoch),
             availableLimitInr = availableLimit,
             totalLimitInr = totalLimit,
             emailReceivedEpochMillis = emailReceivedEpochMillis

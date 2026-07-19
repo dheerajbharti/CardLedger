@@ -104,17 +104,29 @@ class LedgerDbHelper(context: Context) : SQLiteOpenHelper(
             val receivedIndex = cursor.getColumnIndexOrThrow("email_received_epoch_millis")
 
             while (cursor.moveToNext()) {
+                val storedEpoch = cursor.getLong(txEpochIndex)
+                val storedText = cursor.getString(txTextIndex)
+                val receivedEpoch = cursor.getLong(receivedIndex)
+                val resolvedEpoch = TransactionTimeResolver.resolveStoredAmbiguousText(
+                    transactionLocalText = storedText,
+                    emailReceivedEpochMillis = receivedEpoch
+                ) ?: storedEpoch
+
                 results += CardTransaction(
                     gmailMessageId = cursor.getString(idIndex),
                     cardLast4 = cursor.getString(cardIndex),
                     currency = cursor.getString(currencyIndex),
                     amount = cursor.getString(amountIndex),
                     merchant = cursor.getString(merchantIndex),
-                    transactionEpochMillis = cursor.getLong(txEpochIndex),
-                    transactionLocalText = cursor.getString(txTextIndex),
+                    transactionEpochMillis = resolvedEpoch,
+                    transactionLocalText = if (resolvedEpoch == storedEpoch) {
+                        storedText
+                    } else {
+                        TransactionTimeResolver.format(resolvedEpoch)
+                    },
                     availableLimitInr = if (cursor.isNull(availableIndex)) null else cursor.getString(availableIndex),
                     totalLimitInr = if (cursor.isNull(totalIndex)) null else cursor.getString(totalIndex),
-                    emailReceivedEpochMillis = cursor.getLong(receivedIndex)
+                    emailReceivedEpochMillis = receivedEpoch
                 )
             }
         }
