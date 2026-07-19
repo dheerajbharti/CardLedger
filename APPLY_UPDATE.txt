@@ -1,0 +1,12 @@
+Extract the CONTENTS of this ZIP directly into:
+E:\Credit_Card_App\CardLedgerAndroid
+
+Choose Replace/Overwrite when Windows asks. This patch does not contain local.properties,
+the downloaded Gradle wrapper JAR, or your keystore, so those existing files remain intact.
+
+Then run:
+
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat clean testDebugUnitTest assembleDebug
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb install -r ".\app\build\outputs\apk\debug\app-debug.apk"

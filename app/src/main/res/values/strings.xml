@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Card Ledger</string>
+    <string name="connect_gmail">Connect Gmail</string>
+    <string name="sync_now">Sync now</string>
+    <string name="full_rescan">Full rescan of Gmail</string>
+    <string name="export_csv">Export statement as CSV</string>
+    <string name="clear_data">Clear local transaction data</string>
+    <string name="disconnect_gmail">Disconnect Gmail &amp; erase data</string>
+    <string name="no_transactions">No matching ICICI credit-card transactions were found for this period.</string>
+</resources>
