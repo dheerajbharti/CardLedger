@@ -1,0 +1,37 @@
+Card Ledger 1.4 update patch
+
+Copy the contents of this folder into the root of the existing CardLedgerAndroid project and replace matching files.
+Keep local.properties, the Gradle wrapper JAR, and the debug keystore. Install the rebuilt APK with adb install -r.
+
+Changed/new files:
+README.md
+SETUP_CHECKLIST.md
+CHANGELOG.md
+DEPLOY_V1.4.md
+VALIDATION.md
+app/build.gradle.kts
+app/src/main/AndroidManifest.xml
+app/src/test/java/com/dheerajbharti/cardledger/data/CategoryClassifierTest.kt
+app/src/test/java/com/dheerajbharti/cardledger/data/SubscriptionDetectorTest.kt
+app/src/main/res/layout/activity_main.xml
+app/src/main/res/layout/item_transaction.xml
+app/src/main/res/layout/item_budget.xml
+app/src/main/res/layout/item_subscription.xml
+app/src/main/res/layout/item_insight_bar.xml
+app/src/main/res/drawable/bg_category_badge.xml
+app/src/main/res/drawable/ic_notification.xml
+app/src/main/java/com/dheerajbharti/cardledger/MainActivity.kt
+app/src/main/java/com/dheerajbharti/cardledger/AppPreferences.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/CardTransaction.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/LedgerDbHelper.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/SpendingCategory.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/CategoryClassifier.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/SubscriptionDetector.kt
+app/src/main/java/com/dheerajbharti/cardledger/data/InsightsCalculator.kt
+app/src/main/java/com/dheerajbharti/cardledger/sync/LedgerRepository.kt
+app/src/main/java/com/dheerajbharti/cardledger/sync/EmailSyncWorker.kt
+app/src/main/java/com/dheerajbharti/cardledger/sync/NotificationHelper.kt
+app/src/main/java/com/dheerajbharti/cardledger/ui/TransactionAdapter.kt
+app/src/main/java/com/dheerajbharti/cardledger/ui/LandscapeView.kt
+app/src/main/java/com/dheerajbharti/cardledger/ui/BudgetAdapter.kt
+app/src/main/java/com/dheerajbharti/cardledger/ui/SubscriptionAdapter.kt
