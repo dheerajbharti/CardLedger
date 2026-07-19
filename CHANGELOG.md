@@ -1,32 +1,38 @@
 # Changelog
 
+## 1.4.1
+
+- Fixed category-classification precedence for otherwise-unknown foreign-currency merchants containing generic words such as SHOP or STORE.
+- Preserved meaningful categories for recognized foreign merchants such as OpenAI and Amazon.
+- Added regression tests for foreign fallback and recognized retail brands.
+
+
+## 1.4.0
+
+- Added automatic transaction categories and merchant-specific category rules.
+- Added editable categories by tapping transaction cards.
+- Added monthly category budgets and budget progress tracking.
+- Added recurring-subscription detection and annualized subscription estimates.
+- Added a full Insights tab.
+- Added biometric/device-credential app protection.
+- Added automatic privacy mode when leaving the app.
+- Added optional screenshot and screen-recording protection using secure-window mode.
+- Added Android 13+ notification permission handling.
+- Added notifications when background sync imports new transactions.
+- Added non-destructive SQLite migration from the 1.3 database.
+- Added seasonal landscape palettes, moving sync clouds, paintbrush progress, evergreen budget trees, spending mountains, and milestone messages.
+- CSV export now includes category.
+
 ## 1.3.0
 
-- Split the UI into two tabs: **Ledger** and **Connection**.
-- Kept **Sync now** on the main Ledger tab for quick access.
-- Added a top-right privacy eye button to hide or reveal digits across totals, breakdowns, and transaction cards.
-- Refreshed the visual theme with a serene landscape-inspired palette reminiscent of peaceful mountain paintings.
-- Updated the launcher icon to a landscape-inspired finance icon.
-- Preserved background auto-sync and manual sync behavior.
-- Continued support for estimated INR totals and foreign-currency INR estimation.
+- Split the UI into Ledger and Connection tabs.
+- Added the privacy eye button.
+- Added the landscape-inspired theme and launcher icon.
 
 ## 1.2.0
 
-- Fixed transaction ordering for ICICI alerts whose body time omits AM/PM.
-- Added time disambiguation using Gmail received time.
-- Corrected foreign-currency INR estimation when new transactions arrive on the same day.
+- Fixed ambiguous AM/PM handling using Gmail received timestamps.
 
 ## 1.1.0
 
-- Forced a light, high-contrast visual theme.
-- Added lively indigo, teal, and orange visual accents.
-- Enlarged and vertically separated controls.
-- Fixed status-bar/title overlap with system window insets.
-- Made statement breakdown prominent and readable.
-- Added exact/estimated INR debit values.
-- Added estimated INR totals and coverage reporting.
-- Added original-currency totals alongside INR totals.
-- Added INR fields to CSV export.
-- Changed periodic background sync from 12 hours to approximately 6 hours.
-- Added stale-on-launch catch-up sync and UI refresh polling.
-- Added unit tests for INR estimation.
+- Added estimated INR totals, statement breakdowns, light high-contrast UI, CSV enhancements, and approximately six-hour automatic sync.

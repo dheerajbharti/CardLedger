@@ -1,32 +1,12 @@
-# Card Ledger 1.1 update checklist
+# Card Ledger 1.4 update checklist
 
-1. Replace the old source folder with this version, or copy the changed files into the existing project.
-2. Keep `C:\Users\Lenovo\.android\debug.keystore`; do not regenerate it.
-3. Confirm `local.properties` contains:
-
-   ```properties
-   sdk.dir=C:/Users/Lenovo/AppData/Local/Android/Sdk
-   ```
-
-4. In PowerShell:
-
-   ```powershell
-   $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-   .\gradlew.bat clean testDebugUnitTest assembleDebug
-   ```
-
-5. Connect the phone and verify:
-
-   ```powershell
-   $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-   & $adb devices
-   ```
-
-6. Update the installed app while preserving data:
-
-   ```powershell
-   & $adb install -r ".\app\build\outputs\apk\debug\app-debug.apk"
-   ```
-
-7. Open Card Ledger. Existing transactions should remain. The new UI will calculate INR estimates immediately from the stored available-limit values.
-8. On HyperOS, enable Autostart and set Card Ledger battery use to No restrictions for more reliable six-hour background scans.
+1. Back up `E:\Credit_Card_App\CardLedgerAndroid`.
+2. Extract the 1.4 update ZIP into the existing project and replace matching files.
+3. Keep the existing `local.properties`, debug keystore, and Gradle wrapper JAR.
+4. Run `gradlew.bat clean testDebugUnitTest assembleDebug`.
+5. Confirm `app\build\outputs\apk\debug\app-debug.apk` exists.
+6. Confirm the phone appears in `adb devices` as `device`.
+7. Install using `adb install -r` without uninstalling the existing app.
+8. Grant notification permission on first launch if you want background-sync alerts.
+9. Open Connection → Privacy & notifications to enable biometric protection or adjust screenshot protection.
+10. Tap transactions to correct categories; open Budgets to set monthly limits.

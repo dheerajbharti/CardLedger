@@ -18,5 +18,7 @@ data class CardTransaction(
     val totalLimitInr: String?,
     val emailReceivedEpochMillis: Long,
     val inrAmount: String? = null,
-    val inrAmountSource: InrAmountSource = InrAmountSource.UNAVAILABLE
+    val inrAmountSource: InrAmountSource = InrAmountSource.UNAVAILABLE,
+    val category: SpendingCategory = SpendingCategory.OTHER,
+    val categoryManual: Boolean = false
 )

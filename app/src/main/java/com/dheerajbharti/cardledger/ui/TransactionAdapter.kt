@@ -16,7 +16,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Currency
 import java.util.Locale
 
-class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>() {
+class TransactionAdapter(
+    private val onTransactionClick: (CardTransaction) -> Unit = {}
+) : RecyclerView.Adapter<TransactionAdapter.ViewHolder>() {
     private val items = mutableListOf<CardTransaction>()
     private var privacyMode = false
 
@@ -37,7 +39,7 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
             parent,
             false
         )
-        return ViewHolder(binding)
+        return ViewHolder(binding, onTransactionClick)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -47,10 +49,12 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
     override fun getItemCount(): Int = items.size
 
     class ViewHolder(
-        private val binding: ItemTransactionBinding
+        private val binding: ItemTransactionBinding,
+        private val onTransactionClick: (CardTransaction) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: CardTransaction, privacyMode: Boolean) {
-            binding.merchant.text = item.merchant
+            binding.merchant.text = privacyAware(item.merchant, privacyMode)
+            binding.category.text = "${item.category.emoji}  ${item.category.label}"
             binding.amount.text = privacyAware(
                 if (item.currency.equals("INR", ignoreCase = true)) {
                     formatInr(item.amount)
@@ -88,6 +92,7 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.ViewHolder>()
                 }
                 InrAmountSource.EXACT_INR_ALERT -> binding.inrEquivalent.visibility = View.GONE
             }
+            binding.transactionCard.setOnClickListener { onTransactionClick(item) }
         }
 
         private fun formatDate(epochMillis: Long): String {

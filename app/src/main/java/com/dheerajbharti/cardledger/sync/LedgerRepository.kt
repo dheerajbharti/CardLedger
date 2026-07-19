@@ -1,6 +1,7 @@
 package com.dheerajbharti.cardledger.sync
 
 import android.content.Context
+import com.dheerajbharti.cardledger.data.CardTransaction
 import com.dheerajbharti.cardledger.data.IciciTransactionParser
 import com.dheerajbharti.cardledger.data.LedgerDbHelper
 import com.dheerajbharti.cardledger.gmail.GmailClient
@@ -16,7 +17,8 @@ class LedgerRepository(context: Context) {
         val listed: Int,
         val added: Int,
         val alreadyPresent: Int,
-        val notParsed: Int
+        val notParsed: Int,
+        val addedTransactions: List<CardTransaction>
     )
 
     fun sync(
@@ -29,6 +31,7 @@ class LedgerRepository(context: Context) {
         var added = 0
         var alreadyPresent = 0
         var notParsed = 0
+        val addedTransactions = mutableListOf<CardTransaction>()
 
         ids.forEachIndexed { index, id ->
             if (db.containsMessage(id)) {
@@ -44,6 +47,7 @@ class LedgerRepository(context: Context) {
                     notParsed++
                 } else if (db.insert(parsed)) {
                     added++
+                    addedTransactions += parsed
                 } else {
                     alreadyPresent++
                 }
@@ -59,7 +63,8 @@ class LedgerRepository(context: Context) {
             listed = ids.size,
             added = added,
             alreadyPresent = alreadyPresent,
-            notParsed = notParsed
+            notParsed = notParsed,
+            addedTransactions = addedTransactions
         )
     }
 }

@@ -54,6 +54,7 @@ class EmailSyncWorker(
             result.accountEmail?.let {
                 prefs.edit().putString(KEY_ACCOUNT_EMAIL, it).apply()
             }
+            NotificationHelper.notifyTransactionsAdded(applicationContext, result.addedTransactions)
             Result.success()
         } catch (error: Exception) {
             prefs.edit()
